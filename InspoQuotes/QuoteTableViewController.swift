@@ -35,21 +35,31 @@ class QuoteTableViewController: UITableViewController, SKPaymentTransactionObser
         super.viewDidLoad()
 
         SKPaymentQueue.default().add(self)
-    
+        
+        if isPurcahsed() {
+            showPremiumQuotes()
+        }
     }
 
     // MARK: - Table view data source
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if isPurcahsed() {
+            return quotesToShow.count
+        } else  {
         return quotesToShow.count + 1
+        }
+
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "QuoteCell", for: indexPath)
         
         if indexPath.row < quotesToShow.count {
-        cell.textLabel?.text = quotesToShow[indexPath.row]
-        cell.textLabel?.numberOfLines = 0
+            cell.textLabel?.text = quotesToShow[indexPath.row]
+            cell.textLabel?.numberOfLines = 0
+            cell.textLabel?.textColor = UIColor.darkText
+            cell.accessoryType = .none
         } else {
             cell.textLabel?.text = "Get More Quotes"
             cell.textLabel?.textColor = UIColor.systemBlue
@@ -88,15 +98,53 @@ class QuoteTableViewController: UITableViewController, SKPaymentTransactionObser
         for transaction in transactions {
             if transaction.transactionState == .purchased {
                 print("Transaction Successful!")
+                
+              showPremiumQuotes()
+                
+                SKPaymentQueue.default().finishTransaction(transaction)
+                
             } else if transaction.transactionState == .failed {
                 print("Transaction Failed")
+                
+                if let error = transaction.error{
+                    let errorDescription = error.localizedDescription
+                    print("Transaction failed due to error \(errorDescription)")
+                }
+                
+                SKPaymentQueue.default().finishTransaction(transaction)
+                
+            } else if transaction.transactionState == .restored {
+                showPremiumQuotes()
+                print("Transaction restored")
+                
+                navigationItem.setRightBarButton(nil, animated: true)
+                
+                SKPaymentQueue.default().finishTransaction(transaction)
             }
         }
+    }
+    func showPremiumQuotes() {
+
+        UserDefaults.standard.set(true, forKey: productID)
         
+        quotesToShow.append(contentsOf: premiumQuotes)
+        tableView.reloadData()
+        
+    }
+    func isPurcahsed() -> Bool {
+        let purcahseStatus = UserDefaults.standard.bool(forKey: productID)
+        
+        if purcahseStatus {
+            print("Previously purchased")
+            return true
+        } else {
+            print("Never purcahsed")
+            return false
+        }
     }
     
     @IBAction func restorePressed(_ sender: UIBarButtonItem) {
-        
+        SKPaymentQueue.default().restoreCompletedTransactions()
     }
 
 
